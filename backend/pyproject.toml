@@ -1,0 +1,24 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "-q --reuse-db"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    # pytest-django still touches the old EMAIL_BACKEND setting internally.
+    "ignore:The EMAIL_BACKEND setting is deprecated:django.utils.deprecation.RemovedInDjango2028Warning",
+    "ignore:No directory at:UserWarning",
+]
+
+[tool.coverage.run]
+source = ["apps"]
+omit = ["*/migrations/*", "*/admin.py"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ"]
+ignore = ["DJ001", "DJ008", "B904", "E741"]
