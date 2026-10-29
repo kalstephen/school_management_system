@@ -57,7 +57,7 @@ describe("LoginPage", () => {
       </MantineProvider>,
     );
     await userEvent.type(await screen.findByLabelText(/Username/), "admin");
-    await userEvent.type(screen.getByLabelText(/Password/), "Kampala2020");
+    await userEvent.type(screen.getByLabelText(/Password/), "a-test-password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("Signed in as admin")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/platform");

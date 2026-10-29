@@ -9,7 +9,9 @@ Running it again adds nothing that is already there.
 
 import datetime
 import io
+import os
 import random
+import secrets
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -34,8 +36,11 @@ from apps.timetable.services import generate_timetable
 
 from .seed_demo import FIRST, LAST
 
-TEACHER = ("p1east", "Agnes", "Nakimuli", "Teacher@2026")
-DOS = ("nhdos", "Paul", "Ssebunya", "Studies@2026")
+# Set SPEX_SAMPLE_PASSWORD to choose the sample accounts' password; otherwise one is generated
+# and printed. Existing accounts keep their password.
+SAMPLE_PASSWORD = os.environ.get("SPEX_SAMPLE_PASSWORD") or secrets.token_urlsafe(9)
+TEACHER = ("p1east", "Agnes", "Nakimuli", SAMPLE_PASSWORD)
+DOS = ("nhdos", "Paul", "Ssebunya", SAMPLE_PASSWORD)
 DISTRICTS = [
     ("Wakiso", ["Nansana", "Kira", "Entebbe", "Kasangati", "Gayaza"]),
     ("Kampala", ["Ntinda", "Kawempe", "Makindye", "Nakawa", "Rubaga"]),
@@ -83,6 +88,7 @@ class Command(BaseCommand):
         parser.add_argument("--count", type=int, default=50)
 
     def handle(self, *args, **opts):
+        self.created_accounts = set()
         school = School.objects.filter(code__iexact=opts["school"]).first()
         if school is None:
             raise CommandError(f"No school with ID {opts['school']}.")
@@ -122,8 +128,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"{stream}: {len(learners)} learners, term {term}."))
         self.account(school, DOS, "dos", "Director of Studies")
         for (username, *_, password), who in ((TEACHER, "Class teacher"), (DOS, "Director of Studies")):
+            shown = password if username in self.created_accounts else "(existing password kept)"
             self.stdout.write(
-                f"{who} sign-in: School ID {school.code}, username {username}, password {password}"
+                f"{who} sign-in: School ID {school.code}, username {username}, password {shown}"
             )
 
     def current_term(self, school, today):
@@ -164,6 +171,7 @@ class Command(BaseCommand):
             user = User(username=username, first_name=first, last_name=last, phone="0772 000 101")
             user.set_password(password)
             user.save()
+            self.created_accounts.add(username)
             self.say(f"created the sign-in {username} ({designation})")
         membership, _ = Membership.objects.get_or_create(
             school=school, user=user, defaults={"title": designation}

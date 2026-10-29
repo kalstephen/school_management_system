@@ -7,7 +7,9 @@ For development and demonstrations only: all demo accounts share one password.
 """
 
 import datetime
+import os
 import random
+import secrets
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -45,8 +47,10 @@ from apps.timetable.models import Period
 from apps.timetable.services import generate_timetable
 
 DEMO_NAME = "Demo Primary School"
-PASSWORD = "Demo@School2026"
-SUPERUSER = ("admin", "Kampala2020")  # super admin: platform owner
+# Passwords never live in the code: set them in the environment, or a random one is generated
+# and printed once. They apply only to accounts this command creates.
+PASSWORD = os.environ.get("SPEX_DEMO_PASSWORD") or secrets.token_urlsafe(9)
+SUPERUSER = ("admin", os.environ.get("SPEX_SUPERUSER_PASSWORD") or secrets.token_urlsafe(12))
 FIRST = [
     "Aisha",
     "Brian",
@@ -142,8 +146,9 @@ class Command(BaseCommand):
             f"Sign in with any of: head, dos, bursar, director, nurse, librarian, store, schooladmin, "
             f"t.maths, t.english ... - password {PASSWORD}"
         )
+        shown = SUPERUSER[1] if self.superuser_created else "(existing password kept)"
         self.stdout.write(
-            f"Super admin: {SUPERUSER[0]} / {SUPERUSER[1]}  (app and content manager at /admin/)"
+            f"Super admin: {SUPERUSER[0]} / {shown}  (owner console and content manager at /admin/)"
         )
 
     def user(self, username, first, last, school=None, roles=(), scope=None):
@@ -164,8 +169,10 @@ class Command(BaseCommand):
 
     def build(self):
         today = timezone.localdate()
+        self.superuser_created = not User.objects.filter(username=SUPERUSER[0]).exists()
         platform = self.user(SUPERUSER[0], "Platform", "Owner")
-        platform.set_password(SUPERUSER[1])
+        if self.superuser_created:
+            platform.set_password(SUPERUSER[1])
         platform.is_platform_admin = platform.is_staff = platform.is_superuser = True
         platform.save()
 
